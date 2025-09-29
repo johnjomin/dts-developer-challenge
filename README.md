@@ -58,3 +58,33 @@ Visit https://localhost:7124/swagger for interactive API documentation.
 - `ToDo` - Task not started
 - `InProgress` - Task in progress
 - `Done` - Task completed
+
+## API Example
+
+### Create new task
+```bash
+curl -X POST https://localhost:7124/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Review client case",
+    "description": "Review and update case for upcoming court",
+    "dueAt": "2024-12-15T10:00:00Z"
+  }'
+```
+
+### Get All Tasks
+```bash
+curl https://localhost:7124/tasks
+```
+
+### Update Task Status
+```bash
+curl -X PATCH https://localhost:7124/tasks/{task-id}/status \
+  -H "Content-Type: application/json" \
+  -d '{"status": "InProgress"}'
+```
+
+### Delete a Task
+```bash
+curl -X DELETE https://localhost:7124/tasks/{task-id}
+```
