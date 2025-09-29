@@ -31,6 +31,19 @@ builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 
 var app = builder.Build();
 
+// Initialize database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<TasksDbContext>();
+    await context.Database.EnsureCreatedAsync();
+
+    // Seed sample data in development
+    if (app.Environment.IsDevelopment())
+    {
+        await DatabaseSeeder.SeedAsync(context);
+    }
+}
+
 // Configure the HTTP request pipeline.
 // Add global exception handling middleware first
 app.UseMiddleware<GlobalExceptionMiddleware>();
