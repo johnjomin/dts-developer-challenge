@@ -136,6 +136,17 @@ app.MapGet("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
 .WithDescription("Retrieves a specific task by its unique identifier")
 .WithOpenApi();
 
+app.MapGet("/tasks", async (ITaskRepository repository) =>
+{
+    var tasks = await repository.GetAllAsync();
+    var response = tasks.Select(TaskResponse.FromTaskItem).ToArray();
+    return Results.Ok(response);
+})
+.WithName("GetAllTasks")
+.WithSummary("Get all tasks")
+.WithDescription("Retrieves all tasks sorted by due date (tasks with due dates first, then tasks without)")
+.WithOpenApi();
+
 app.Run();
 
 // Make the Program class public for testing

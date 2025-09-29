@@ -272,6 +272,99 @@ public class TasksEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Fact]
+    public async Task GET_Tasks_WithMultipleTasks_ReturnsSortedTasks()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Create tasks with different due dates and no due dates
+        var tasks = new[]
+        {
+            new { Title = "Task due in 3 days", DueAt = DateTime.UtcNow.AddDays(3) },
+            new { Title = "Task due in 1 day", DueAt = DateTime.UtcNow.AddDays(1) },
+            new { Title = "Task with no due date 1", DueAt = (DateTime?)null },
+            new { Title = "Task due in 2 days", DueAt = DateTime.UtcNow.AddDays(2) },
+            new { Title = "Task with no due date 2", DueAt = (DateTime?)null }
+        };
+
+        // Create all tasks
+        foreach (var task in tasks)
+        {
+            await client.PostAsJsonAsync("/tasks", task);
+        }
+
+        // Act
+        var response = await client.GetAsync("/tasks");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var retrievedTasks = JsonSerializer.Deserialize<TaskResponse[]>(content, _jsonOptions);
+
+        retrievedTasks.Should().NotBeNull();
+        retrievedTasks!.Should().HaveCount(5);
+
+        // Verify sorting: tasks with due dates first (sorted by due date), then tasks without due dates
+        retrievedTasks[0].Title.Should().Be("Task due in 1 day");
+        retrievedTasks[1].Title.Should().Be("Task due in 2 days");
+        retrievedTasks[2].Title.Should().Be("Task due in 3 days");
+        // Tasks without due dates should be at the end (order between them doesn't matter)
+        retrievedTasks[3].DueAt.Should().BeNull();
+        retrievedTasks[4].DueAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GET_Tasks_EmptyDatabase_ReturnsEmptyArray()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/tasks");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var retrievedTasks = JsonSerializer.Deserialize<TaskResponse[]>(content, _jsonOptions);
+
+        retrievedTasks.Should().NotBeNull();
+        retrievedTasks!.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GET_Tasks_WithSingleTask_ReturnsTask()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        var createTaskRequest = new
+        {
+            Title = "Single task",
+            Description = "The only task in the system",
+            DueAt = DateTime.UtcNow.AddDays(1)
+        };
+
+        await client.PostAsJsonAsync("/tasks", createTaskRequest);
+
+        // Act
+        var response = await client.GetAsync("/tasks");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var retrievedTasks = JsonSerializer.Deserialize<TaskResponse[]>(content, _jsonOptions);
+
+        retrievedTasks.Should().NotBeNull();
+        retrievedTasks!.Should().HaveCount(1);
+        retrievedTasks[0].Title.Should().Be("Single task");
+        retrievedTasks[0].Description.Should().Be("The only task in the system");
+        retrievedTasks[0].Status.Should().Be("ToDo");
+    }
+
     private class TaskResponse
     {
         public Guid Id { get; set; }
