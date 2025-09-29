@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using CaseworkerTasks.Api.Data;
 using CaseworkerTasks.Api.DTOs;
+using CaseworkerTasks.Api.Middleware;
 using CaseworkerTasks.Api.Models;
 using CaseworkerTasks.Api.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Add problem details support
+builder.Services.AddProblemDetails();
+
 // Add database context
 builder.Services.AddDbContext<TasksDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=tasks.db"));
@@ -28,6 +32,12 @@ builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+// Add global exception handling middleware first
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// Add problem details middleware
+app.UseStatusCodePages();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
