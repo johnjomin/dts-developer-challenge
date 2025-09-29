@@ -119,6 +119,23 @@ app.MapPost("/tasks", async (CreateTaskRequest request, ITaskRepository reposito
 .WithDescription("Creates a new task with the provided information")
 .WithOpenApi();
 
+app.MapGet("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
+{
+    var task = await repository.GetByIdAsync(id);
+
+    if (task == null)
+    {
+        return Results.NotFound();
+    }
+
+    var response = TaskResponse.FromTaskItem(task);
+    return Results.Ok(response);
+})
+.WithName("GetTaskById")
+.WithSummary("Get a task by ID")
+.WithDescription("Retrieves a specific task by its unique identifier")
+.WithOpenApi();
+
 app.Run();
 
 // Make the Program class public for testing
