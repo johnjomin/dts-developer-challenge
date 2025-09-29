@@ -1,4 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using CaseworkerTasks.Api.Data;
+using CaseworkerTasks.Api.DTOs;
+using CaseworkerTasks.Api.Models;
 using CaseworkerTasks.Api.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -77,6 +80,43 @@ app.MapGet("/", () => new
 .WithName("GetWelcome")
 .WithSummary("API welcome message")
 .WithDescription("Returns welcome information and available endpoints")
+.WithOpenApi();
+
+// Task endpoints
+app.MapPost("/tasks", async (CreateTaskRequest request, ITaskRepository repository) =>
+{
+    // Validate the request
+    var validationContext = new ValidationContext(request);
+    var validationResults = new List<ValidationResult>();
+
+    if (!Validator.TryValidateObject(request, validationContext, validationResults, true))
+    {
+        var errors = validationResults.ToDictionary(
+            vr => vr.MemberNames.FirstOrDefault() ?? "General",
+            vr => vr.ErrorMessage ?? "Invalid value"
+        );
+
+        return Results.ValidationProblem(errors);
+    }
+
+    // Create the task
+    var task = new TaskItem
+    {
+        Id = Guid.NewGuid(),
+        Title = request.Title,
+        Description = request.Description,
+        Status = TaskStatus.ToDo,
+        DueAt = request.DueAt
+    };
+
+    var createdTask = await repository.CreateAsync(task);
+    var response = TaskResponse.FromTaskItem(createdTask);
+
+    return Results.Created($"/tasks/{response.Id}", response);
+})
+.WithName("CreateTask")
+.WithSummary("Create a new task")
+.WithDescription("Creates a new task with the provided information")
 .WithOpenApi();
 
 app.Run();
