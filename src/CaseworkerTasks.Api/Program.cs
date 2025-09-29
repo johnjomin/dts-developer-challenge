@@ -147,6 +147,47 @@ app.MapGet("/tasks", async (ITaskRepository repository) =>
 .WithDescription("Retrieves all tasks sorted by due date (tasks with due dates first, then tasks without)")
 .WithOpenApi();
 
+app.MapPatch("/tasks/{id:guid}/status", async (Guid id, UpdateTaskStatusRequest request, ITaskRepository repository) =>
+{
+    // Validate the request
+    var validationContext = new ValidationContext(request);
+    var validationResults = new List<ValidationResult>();
+
+    if (!Validator.TryValidateObject(request, validationContext, validationResults, true))
+    {
+        var errors = validationResults.ToDictionary(
+            vr => vr.MemberNames.FirstOrDefault() ?? "General",
+            vr => vr.ErrorMessage ?? "Invalid value"
+        );
+
+        return Results.ValidationProblem(errors);
+    }
+
+    // Validate status value
+    if (!Enum.TryParse<TaskStatus>(request.Status, out var newStatus))
+    {
+        return Results.BadRequest("Invalid status. Valid statuses are: ToDo, InProgress, Done");
+    }
+
+    // Get the existing task
+    var existingTask = await repository.GetByIdAsync(id);
+    if (existingTask == null)
+    {
+        return Results.NotFound();
+    }
+
+    // Update only the status
+    existingTask.Status = newStatus;
+    var updatedTask = await repository.UpdateAsync(existingTask);
+
+    var response = TaskResponse.FromTaskItem(updatedTask!);
+    return Results.Ok(response);
+})
+.WithName("UpdateTaskStatus")
+.WithSummary("Update task status")
+.WithDescription("Updates the status of a specific task (ToDo, InProgress, Done)")
+.WithOpenApi();
+
 app.Run();
 
 // Make the Program class public for testing

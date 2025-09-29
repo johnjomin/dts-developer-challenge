@@ -365,6 +365,150 @@ public class TasksEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         retrievedTasks[0].Status.Should().Be("ToDo");
     }
 
+    [Fact]
+    public async Task PATCH_Tasks_Status_ValidStatusUpdate_UpdatesTaskStatus()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // First create a task
+        var createTaskRequest = new
+        {
+            Title = "Task to update status",
+            Description = "This task will have its status changed"
+        };
+
+        var createResponse = await client.PostAsJsonAsync("/tasks", createTaskRequest);
+        var createdTaskContent = await createResponse.Content.ReadAsStringAsync();
+        var createdTask = JsonSerializer.Deserialize<TaskResponse>(createdTaskContent, _jsonOptions);
+
+        var updateRequest = new
+        {
+            Status = "InProgress"
+        };
+
+        // Act
+        var response = await client.PatchAsJsonAsync($"/tasks/{createdTask!.Id}/status", updateRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var updatedTask = JsonSerializer.Deserialize<TaskResponse>(content, _jsonOptions);
+
+        updatedTask.Should().NotBeNull();
+        updatedTask!.Id.Should().Be(createdTask.Id);
+        updatedTask.Title.Should().Be("Task to update status");
+        updatedTask.Status.Should().Be("InProgress");
+    }
+
+    [Theory]
+    [InlineData("ToDo")]
+    [InlineData("InProgress")]
+    [InlineData("Done")]
+    public async Task PATCH_Tasks_Status_AllValidStatuses_UpdatesSuccessfully(string status)
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Create a task
+        var createTaskRequest = new { Title = $"Task for {status} status" };
+        var createResponse = await client.PostAsJsonAsync("/tasks", createTaskRequest);
+        var createdTaskContent = await createResponse.Content.ReadAsStringAsync();
+        var createdTask = JsonSerializer.Deserialize<TaskResponse>(createdTaskContent, _jsonOptions);
+
+        var updateRequest = new { Status = status };
+
+        // Act
+        var response = await client.PatchAsJsonAsync($"/tasks/{createdTask!.Id}/status", updateRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var updatedTask = JsonSerializer.Deserialize<TaskResponse>(content, _jsonOptions);
+
+        updatedTask!.Status.Should().Be(status);
+    }
+
+    [Fact]
+    public async Task PATCH_Tasks_Status_NonExistentTask_ReturnsNotFound()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var nonExistentId = Guid.NewGuid();
+        var updateRequest = new { Status = "InProgress" };
+
+        // Act
+        var response = await client.PatchAsJsonAsync($"/tasks/{nonExistentId}/status", updateRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task PATCH_Tasks_Status_InvalidStatus_ReturnsBadRequest()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Create a task first
+        var createTaskRequest = new { Title = "Task for invalid status test" };
+        var createResponse = await client.PostAsJsonAsync("/tasks", createTaskRequest);
+        var createdTaskContent = await createResponse.Content.ReadAsStringAsync();
+        var createdTask = JsonSerializer.Deserialize<TaskResponse>(createdTaskContent, _jsonOptions);
+
+        var updateRequest = new { Status = "InvalidStatus" };
+
+        // Act
+        var response = await client.PatchAsJsonAsync($"/tasks/{createdTask!.Id}/status", updateRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Invalid status");
+    }
+
+    [Fact]
+    public async Task PATCH_Tasks_Status_EmptyStatus_ReturnsBadRequest()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Create a task first
+        var createTaskRequest = new { Title = "Task for empty status test" };
+        var createResponse = await client.PostAsJsonAsync("/tasks", createTaskRequest);
+        var createdTaskContent = await createResponse.Content.ReadAsStringAsync();
+        var createdTask = JsonSerializer.Deserialize<TaskResponse>(createdTaskContent, _jsonOptions);
+
+        var updateRequest = new { Status = "" };
+
+        // Act
+        var response = await client.PatchAsJsonAsync($"/tasks/{createdTask!.Id}/status", updateRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("Status is required");
+    }
+
+    [Fact]
+    public async Task PATCH_Tasks_Status_InvalidGuid_ReturnsBadRequest()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var invalidId = "not-a-guid";
+        var updateRequest = new { Status = "InProgress" };
+
+        // Act
+        var response = await client.PatchAsJsonAsync($"/tasks/{invalidId}/status", updateRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     private class TaskResponse
     {
         public Guid Id { get; set; }
