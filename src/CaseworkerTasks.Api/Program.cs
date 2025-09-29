@@ -4,6 +4,7 @@ using CaseworkerTasks.Api.DTOs;
 using CaseworkerTasks.Api.Middleware;
 using CaseworkerTasks.Api.Models;
 using CaseworkerTasks.Api.Repositories;
+using CaseworkerTasks.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,8 +30,9 @@ builder.Services.AddProblemDetails();
 builder.Services.AddDbContext<TasksDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=tasks.db"));
 
-// Add repositories
+// Add repositories and services
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<ITaskService, TaskService>();
 
 var app = builder.Build();
 
@@ -112,7 +114,7 @@ app.MapGet("/", () => new
 .WithOpenApi();
 
 // Task endpoints
-app.MapPost("/tasks", async (CreateTaskRequest request, ITaskRepository repository) =>
+app.MapPost("/tasks", async (CreateTaskRequest request, ITaskService taskService) =>
 {
     // Validate the request
     var validationContext = new ValidationContext(request);
@@ -128,19 +130,7 @@ app.MapPost("/tasks", async (CreateTaskRequest request, ITaskRepository reposito
         return Results.ValidationProblem(errors);
     }
 
-    // Create the task
-    var task = new TaskItem
-    {
-        Id = Guid.NewGuid(),
-        Title = request.Title,
-        Description = request.Description,
-        Status = TaskStatus.ToDo,
-        DueAt = request.DueAt
-    };
-
-    var createdTask = await repository.CreateAsync(task);
-    var response = TaskResponse.FromTaskItem(createdTask);
-
+    var response = await taskService.CreateTaskAsync(request);
     return Results.Created($"/tasks/{response.Id}", response);
 })
 .WithName("CreateTask")
@@ -151,16 +141,15 @@ app.MapPost("/tasks", async (CreateTaskRequest request, ITaskRepository reposito
 .ProducesValidationProblem(400)
 .WithOpenApi();
 
-app.MapGet("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
+app.MapGet("/tasks/{id:guid}", async (Guid id, ITaskService taskService) =>
 {
-    var task = await repository.GetByIdAsync(id);
+    var response = await taskService.GetTaskByIdAsync(id);
 
-    if (task == null)
+    if (response == null)
     {
         return Results.NotFound();
     }
 
-    var response = TaskResponse.FromTaskItem(task);
     return Results.Ok(response);
 })
 .WithName("GetTaskById")
@@ -171,11 +160,10 @@ app.MapGet("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
 .Produces(400)
 .WithOpenApi();
 
-app.MapGet("/tasks", async (ITaskRepository repository) =>
+app.MapGet("/tasks", async (ITaskService taskService) =>
 {
-    var tasks = await repository.GetAllAsync();
-    var response = tasks.Select(TaskResponse.FromTaskItem).ToArray();
-    return Results.Ok(response);
+    var response = await taskService.GetAllTasksAsync();
+    return Results.Ok(response.ToArray());
 })
 .WithName("GetAllTasks")
 .WithSummary("Get all tasks")
@@ -183,7 +171,7 @@ app.MapGet("/tasks", async (ITaskRepository repository) =>
 .Produces<TaskResponse[]>(200, "application/json")
 .WithOpenApi();
 
-app.MapPatch("/tasks/{id:guid}/status", async (Guid id, UpdateTaskStatusRequest request, ITaskRepository repository) =>
+app.MapPatch("/tasks/{id:guid}/status", async (Guid id, UpdateTaskStatusRequest request, ITaskService taskService) =>
 {
     // Validate the request
     var validationContext = new ValidationContext(request);
@@ -199,24 +187,18 @@ app.MapPatch("/tasks/{id:guid}/status", async (Guid id, UpdateTaskStatusRequest 
         return Results.ValidationProblem(errors);
     }
 
-    // Validate status value
-    if (!Enum.TryParse<TaskStatus>(request.Status, out var newStatus))
-    {
-        return Results.BadRequest("Invalid status. Valid statuses are: ToDo, InProgress, Done");
-    }
+    var response = await taskService.UpdateTaskStatusAsync(id, request);
 
-    // Get the existing task
-    var existingTask = await repository.GetByIdAsync(id);
-    if (existingTask == null)
+    if (response == null)
     {
+        // Could be invalid status or task not found
+        if (!Enum.TryParse<TaskStatus>(request.Status, out _))
+        {
+            return Results.BadRequest("Invalid status. Valid statuses are: ToDo, InProgress, Done");
+        }
         return Results.NotFound();
     }
 
-    // Update only the status
-    existingTask.Status = newStatus;
-    var updatedTask = await repository.UpdateAsync(existingTask);
-
-    var response = TaskResponse.FromTaskItem(updatedTask!);
     return Results.Ok(response);
 })
 .WithName("UpdateTaskStatus")
@@ -228,9 +210,9 @@ app.MapPatch("/tasks/{id:guid}/status", async (Guid id, UpdateTaskStatusRequest 
 .Produces(404)
 .WithOpenApi();
 
-app.MapDelete("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
+app.MapDelete("/tasks/{id:guid}", async (Guid id, ITaskService taskService) =>
 {
-    var success = await repository.DeleteAsync(id);
+    var success = await taskService.DeleteTaskAsync(id);
 
     if (!success)
     {
