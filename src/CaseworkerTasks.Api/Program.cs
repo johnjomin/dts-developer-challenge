@@ -188,6 +188,22 @@ app.MapPatch("/tasks/{id:guid}/status", async (Guid id, UpdateTaskStatusRequest 
 .WithDescription("Updates the status of a specific task (ToDo, InProgress, Done)")
 .WithOpenApi();
 
+app.MapDelete("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
+{
+    var success = await repository.DeleteAsync(id);
+
+    if (!success)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.NoContent();
+})
+.WithName("DeleteTask")
+.WithSummary("Delete a task")
+.WithDescription("Deletes a specific task by its unique identifier")
+.WithOpenApi();
+
 app.Run();
 
 // Make the Program class public for testing

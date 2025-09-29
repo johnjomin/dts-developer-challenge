@@ -509,6 +509,98 @@ public class TasksEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Fact]
+    public async Task DELETE_Tasks_ExistingTask_DeletesSuccessfully()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // First create a task
+        var createTaskRequest = new
+        {
+            Title = "Task to be deleted",
+            Description = "This task will be removed"
+        };
+
+        var createResponse = await client.PostAsJsonAsync("/tasks", createTaskRequest);
+        var createdTaskContent = await createResponse.Content.ReadAsStringAsync();
+        var createdTask = JsonSerializer.Deserialize<TaskResponse>(createdTaskContent, _jsonOptions);
+
+        // Act
+        var response = await client.DeleteAsync($"/tasks/{createdTask!.Id}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify the task is actually deleted by trying to retrieve it
+        var getResponse = await client.GetAsync($"/tasks/{createdTask.Id}");
+        getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DELETE_Tasks_NonExistentTask_ReturnsNotFound()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var response = await client.DeleteAsync($"/tasks/{nonExistentId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DELETE_Tasks_InvalidGuid_ReturnsBadRequest()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var invalidId = "not-a-guid";
+
+        // Act
+        var response = await client.DeleteAsync($"/tasks/{invalidId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task DELETE_Tasks_AfterDeletion_TaskNotInList()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // Create multiple tasks
+        var task1Request = new { Title = "Task 1" };
+        var task2Request = new { Title = "Task to delete" };
+        var task3Request = new { Title = "Task 3" };
+
+        await client.PostAsJsonAsync("/tasks", task1Request);
+        var createResponse = await client.PostAsJsonAsync("/tasks", task2Request);
+        await client.PostAsJsonAsync("/tasks", task3Request);
+
+        var createdTaskContent = await createResponse.Content.ReadAsStringAsync();
+        var createdTask = JsonSerializer.Deserialize<TaskResponse>(createdTaskContent, _jsonOptions);
+
+        // Act
+        var deleteResponse = await client.DeleteAsync($"/tasks/{createdTask!.Id}");
+
+        // Assert
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // Verify the task is not in the list
+        var listResponse = await client.GetAsync("/tasks");
+        var listContent = await listResponse.Content.ReadAsStringAsync();
+        var allTasks = JsonSerializer.Deserialize<TaskResponse[]>(listContent, _jsonOptions);
+
+        allTasks.Should().NotBeNull();
+        allTasks!.Should().HaveCount(2);
+        allTasks.Should().NotContain(t => t.Id == createdTask.Id);
+        allTasks.Should().Contain(t => t.Title == "Task 1");
+        allTasks.Should().Contain(t => t.Title == "Task 3");
+    }
+
     private class TaskResponse
     {
         public Guid Id { get; set; }
