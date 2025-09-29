@@ -209,6 +209,69 @@ public class TasksEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         content.Should().Contain("1000 characters");
     }
 
+    [Fact]
+    public async Task GET_Tasks_ById_ExistingTask_ReturnsTask()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+
+        // First create a task
+        var createTaskRequest = new
+        {
+            Title = "Task to retrieve",
+            Description = "This task should be found by ID",
+            DueAt = DateTime.UtcNow.AddDays(3)
+        };
+
+        var createResponse = await client.PostAsJsonAsync("/tasks", createTaskRequest);
+        var createdTaskContent = await createResponse.Content.ReadAsStringAsync();
+        var createdTask = JsonSerializer.Deserialize<TaskResponse>(createdTaskContent, _jsonOptions);
+
+        // Act
+        var response = await client.GetAsync($"/tasks/{createdTask!.Id}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var content = await response.Content.ReadAsStringAsync();
+        var retrievedTask = JsonSerializer.Deserialize<TaskResponse>(content, _jsonOptions);
+
+        retrievedTask.Should().NotBeNull();
+        retrievedTask!.Id.Should().Be(createdTask.Id);
+        retrievedTask.Title.Should().Be("Task to retrieve");
+        retrievedTask.Description.Should().Be("This task should be found by ID");
+        retrievedTask.Status.Should().Be("ToDo");
+        retrievedTask.DueAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(3), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task GET_Tasks_ById_NonExistentTask_ReturnsNotFound()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var response = await client.GetAsync($"/tasks/{nonExistentId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GET_Tasks_ById_InvalidGuid_ReturnsBadRequest()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        var invalidId = "not-a-guid";
+
+        // Act
+        var response = await client.GetAsync($"/tasks/{invalidId}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     private class TaskResponse
     {
         public Guid Id { get; set; }
