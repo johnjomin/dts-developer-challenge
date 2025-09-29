@@ -1,0 +1,32 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CaseworkerTasks.Api", "src\CaseworkerTasks.Api\CaseworkerTasks.Api.csproj", "{8B83B2B1-4F2A-4B8C-8F1D-2E3A4B5C6D7E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CaseworkerTasks.Api.Tests", "tests\CaseworkerTasks.Api.Tests\CaseworkerTasks.Api.Tests.csproj", "{9C94C3C2-5G3B-5C9D-9G2E-3F4B5C6D7E8F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B2C3D4E5-F6G7-8901-BCDE-F23456789012}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8B83B2B1-4F2A-4B8C-8F1D-2E3A4B5C6D7E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B83B2B1-4F2A-4B8C-8F1D-2E3A4B5C6D7E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B83B2B1-4F2A-4B8C-8F1D-2E3A4B5C6D7E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B83B2B1-4F2A-4B8C-8F1D-2E3A4B5C6D7E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9C94C3C2-5G3B-5C9D-9G2E-3F4B5C6D7E8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C94C3C2-5G3B-5C9D-9G2E-3F4B5C6D7E8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C94C3C2-5G3B-5C9D-9G2E-3F4B5C6D7E8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C94C3C2-5G3B-5C9D-9G2E-3F4B5C6D7E8F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8B83B2B1-4F2A-4B8C-8F1D-2E3A4B5C6D7E} = {A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
+		{9C94C3C2-5G3B-5C9D-9G2E-3F4B5C6D7E8F} = {B2C3D4E5-F6G7-8901-BCDE-F23456789012}
+	EndGlobalSection
+EndGlobal
