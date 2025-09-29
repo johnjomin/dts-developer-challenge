@@ -17,6 +17,9 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "A simple task management system for caseworkers"
     });
+
+    // Add response examples and status codes
+    c.EnableAnnotations();
 });
 
 // Add problem details support
@@ -90,7 +93,9 @@ app.MapGet("/health", async (TasksDbContext context) =>
 })
 .WithName("GetHealth")
 .WithSummary("Health check endpoint")
-.WithDescription("Returns the health status of the API and database connection")
+.WithDescription("Returns the health status of the API and database connection. Use this endpoint to verify the service is running and can connect to the database.")
+.Produces<object>(200, "application/json")
+.Produces<object>(503, "application/problem+json")
 .WithOpenApi();
 
 // Welcome endpoint
@@ -102,7 +107,8 @@ app.MapGet("/", () => new
 })
 .WithName("GetWelcome")
 .WithSummary("API welcome message")
-.WithDescription("Returns welcome information and available endpoints")
+.WithDescription("Returns welcome information and links to available endpoints. Start here to explore the API.")
+.Produces<object>(200, "application/json")
 .WithOpenApi();
 
 // Task endpoints
@@ -139,7 +145,10 @@ app.MapPost("/tasks", async (CreateTaskRequest request, ITaskRepository reposito
 })
 .WithName("CreateTask")
 .WithSummary("Create a new task")
-.WithDescription("Creates a new task with the provided information")
+.WithDescription("Creates a new task with the provided information. The task will be assigned a unique ID and set to 'ToDo' status by default.")
+.Accepts<CreateTaskRequest>("application/json")
+.Produces<TaskResponse>(201, "application/json")
+.ProducesValidationProblem(400)
 .WithOpenApi();
 
 app.MapGet("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
@@ -156,7 +165,10 @@ app.MapGet("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
 })
 .WithName("GetTaskById")
 .WithSummary("Get a task by ID")
-.WithDescription("Retrieves a specific task by its unique identifier")
+.WithDescription("Retrieves a specific task by its unique identifier. Returns 404 if the task is not found.")
+.Produces<TaskResponse>(200, "application/json")
+.Produces(404)
+.Produces(400)
 .WithOpenApi();
 
 app.MapGet("/tasks", async (ITaskRepository repository) =>
@@ -167,7 +179,8 @@ app.MapGet("/tasks", async (ITaskRepository repository) =>
 })
 .WithName("GetAllTasks")
 .WithSummary("Get all tasks")
-.WithDescription("Retrieves all tasks sorted by due date (tasks with due dates first, then tasks without)")
+.WithDescription("Retrieves all tasks sorted by due date for optimal task prioritization. Tasks with due dates appear first (ordered chronologically), followed by tasks without due dates.")
+.Produces<TaskResponse[]>(200, "application/json")
 .WithOpenApi();
 
 app.MapPatch("/tasks/{id:guid}/status", async (Guid id, UpdateTaskStatusRequest request, ITaskRepository repository) =>
@@ -208,7 +221,11 @@ app.MapPatch("/tasks/{id:guid}/status", async (Guid id, UpdateTaskStatusRequest 
 })
 .WithName("UpdateTaskStatus")
 .WithSummary("Update task status")
-.WithDescription("Updates the status of a specific task (ToDo, InProgress, Done)")
+.WithDescription("Updates the status of a specific task. Valid statuses are 'ToDo', 'InProgress', and 'Done'. This endpoint supports workflow transitions for task management.")
+.Accepts<UpdateTaskStatusRequest>("application/json")
+.Produces<TaskResponse>(200, "application/json")
+.ProducesValidationProblem(400)
+.Produces(404)
 .WithOpenApi();
 
 app.MapDelete("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
@@ -224,7 +241,10 @@ app.MapDelete("/tasks/{id:guid}", async (Guid id, ITaskRepository repository) =>
 })
 .WithName("DeleteTask")
 .WithSummary("Delete a task")
-.WithDescription("Deletes a specific task by its unique identifier")
+.WithDescription("Permanently deletes a specific task by its unique identifier. This action cannot be undone.")
+.Produces(204)
+.Produces(404)
+.Produces(400)
 .WithOpenApi();
 
 app.Run();
