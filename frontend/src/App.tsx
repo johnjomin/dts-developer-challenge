@@ -12,7 +12,7 @@ interface Task {
 function App() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [health, setHealth] = useState<string>('Checking...')
-  const [newTask, setNewTask] = useState({ title: '', description: '' })
+  const [newTask, setNewTask] = useState({ title: '', description: '', dueAt: '' })
 
   const API_BASE = 'https://localhost:7124'
 
@@ -36,14 +36,19 @@ function App() {
     if (!newTask.title) return
 
     try {
+      const taskData = {
+        title: newTask.title,
+        description: newTask.description || undefined,
+        dueAt: newTask.dueAt ? new Date(newTask.dueAt).toISOString() : undefined
+      }
       const res = await fetch(`${API_BASE}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTask)
+        body: JSON.stringify(taskData)
       })
       const task = await res.json()
       setTasks([...tasks, task])
-      setNewTask({ title: '', description: '' })
+      setNewTask({ title: '', description: '', dueAt: '' })
     } catch (error) {
       console.error('Failed to add task:', error)
     }
@@ -82,7 +87,7 @@ function App() {
 
       <div className="add-task">
         <input
-          placeholder="Task title"
+          placeholder="Task title *"
           value={newTask.title}
           onChange={e => setNewTask({ ...newTask, title: e.target.value })}
         />
@@ -91,6 +96,12 @@ function App() {
           value={newTask.description}
           onChange={e => setNewTask({ ...newTask, description: e.target.value })}
         />
+        <input
+          type="date"
+          value={newTask.dueAt}
+          onChange={e => setNewTask({ ...newTask, dueAt: e.target.value })}
+          title="Due date (optional)"
+        />
         <button onClick={addTask}>Add Task</button>
       </div>
 
@@ -98,7 +109,7 @@ function App() {
         {tasks.map(task => (
           <div key={task.id} className={`task ${task.status.toLowerCase()}`}>
             <div className="task-info">
-              <h3>{task.title}</h3>
+              <h3>{task.title} <span className={`status-badge ${task.status.toLowerCase()}`}>{task.status}</span></h3>
               {task.description && <p>{task.description}</p>}
               {task.dueAt && <small>Due: {new Date(task.dueAt).toLocaleDateString()}</small>}
             </div>

@@ -143,6 +143,34 @@ h1 {
   background: #c82333;
 }
 
+.status-badge {
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-left: 10px;
+}
+
+.status-badge.todo {
+  background: #6c757d;
+  color: white;
+}
+
+.status-badge.inprogress {
+  background: #ffc107;
+  color: #212529;
+}
+
+.status-badge.done {
+  background: #28a745;
+  color: white;
+}
+
+.add-task input[type="date"] {
+  min-width: 140px;
+}
+
 .empty {
   text-align: center;
   padding: 40px;
